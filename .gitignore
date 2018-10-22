@@ -1,3 +1,6 @@
 .vagrant/
 *.log
 build/
+
+devel/lib/
+devel/share
