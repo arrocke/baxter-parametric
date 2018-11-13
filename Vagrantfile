@@ -9,6 +9,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.provider "virtualbox" do |vb|
     # Display the VirtualBox GUI when booting the machine
+    vb.customize ["modifyvm", :id, "--vram", "256"]
     vb.gui = true
     vb.name = "ROS"
     vb.cpus = 4
