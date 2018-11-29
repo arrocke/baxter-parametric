@@ -13,8 +13,9 @@ close_button = DigitalIO("right_upper_button")
 open_button = DigitalIO("right_lower_button")
 
 gripper = Gripper("right", CHECK_VERSION)
+gripper.calibrate()
 
-if (not (gripper.calibrated()) or gripper.calibrate()):
+if (not (gripper.calibrated())):
   rospy.logwarn("Gripper calibration failed.")
 
 close_button.state_changed.connect(gripper.close)
