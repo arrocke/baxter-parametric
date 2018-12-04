@@ -7,6 +7,10 @@ from baxter_interface import(
   CHECK_VERSION
 )
 
+# This program gives control of the gripper to the cuff buttons.
+# The long button closes the gripper
+# and the round button opens the gripper.
+
 rospy.init_node("parametric_gripper")
 
 close_button = DigitalIO("right_upper_button")
