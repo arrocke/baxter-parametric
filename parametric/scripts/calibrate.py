@@ -20,6 +20,9 @@ PEN_LENGTH = 0.053975
 # Move the arm to the (x, -y) position and press the long button on the cuff.
 # Then move the arm to the (-x, -y) position and press the same button.
 # Finally move the arm to the (-x, y) position and press the same button.
+# Then the arm will move to the origin.
+# Press w to raise the origin point and s to lower.
+# Press d to continue.
 # This class will install the drawing coordinate frame into the parameter server.
 class Calibration:
   def __init__(self):
@@ -73,9 +76,6 @@ class Calibration:
     p3 = points[2].position
 
 
-    # Coordinate frame
-    u = vmath.unit(vmath.vector(p2, p1))
-
     # The origin is halfway between p1 and p3
     origin = geometry_msgs.msg.Point(
       (p1.x + p3.x) / 2,
@@ -86,9 +86,10 @@ class Calibration:
     origin = self.__get_vertical(origin)    
 
     # z points out of the drawing plane
-    z = geometry_msgs.msg.Vector3(0, 0, 1)
-    x = vmath.unit(geometry_msgs.msg.Vector3(u.x, u.y, 0))
     # y is orthogonal to x and x
+    z = geometry_msgs.msg.Vector3(0, 0, 1)
+    u = vmath.unit(vmath.vector(p2, p1))
+    x = vmath.unit(geometry_msgs.msg.Vector3(u.x, u.y, 0))
     y = vmath.cross(z, x)
 
     # Bounds

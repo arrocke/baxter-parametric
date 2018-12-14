@@ -61,6 +61,7 @@ class ParametricDrawer:
       point = sample[i]
       x = (point[0] / max_x_sample * self.max_pose)
       y = (point[1] / max_y_sample * -self.max_pose)
+      # p_robot = origin + x * x_direction + y * y_direction
       sample[i] = vmath.add(
         vmath.add(self.origin, vmath.scale(x, self.x_direction)),
         vmath.scale(y, self.y_direction)

@@ -16,16 +16,24 @@ d = ParametricDrawer()
 #   return sin(t)
 # start = 0
 # end = 2 * pi
-# steps = 100
+# steps = 50
 
 # Astroid
-def x(t):
-  return cos(t) ** 3
-def y(t):
-  return sin(t) ** 3
-start = 0
-end = 2 * pi
-steps = 100
+# def x(t):
+#   return cos(t) ** 3
+# def y(t):
+#   return sin(t) ** 3
+# start = 0
+# end = 2 * pi
+# steps = 50
 
+# Spiral
+def x(t):
+  return t * cos(t)
+def y(t):
+  return t * sin(t)
+start = 0
+end = 3 * pi
+steps = 40
 
 d.draw(x, y, start, end, steps)

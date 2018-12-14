@@ -4,6 +4,8 @@ from geometry_msgs.msg import (
 )
 from math import sqrt
 
+# Vector and Point math
+
 def mag(u):
   return sqrt(u.x ** 2 + u.y ** 2 + u.z ** 2)
 

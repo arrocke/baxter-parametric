@@ -31,6 +31,9 @@ constraints.joint_constraints.append(w0_constraint)
 q = quaternion_from_euler(0, math.pi, math.pi)
 orientation = Quaternion(q[0], q[1], q[2], q[3])
 
+# Common motions for the arm
+
+
 def neutral(move_group):
   joint_goal = [
     math.pi / 4,
