@@ -9,6 +9,9 @@ import geometry_msgs.msg
 from baxter_interface import DigitalIO
 from tf.transformations import quaternion_from_euler
 import math 
+import baxter_external_devices
+import motion
+import vmath
 
 PEN_LENGTH = 0.053975
 
@@ -43,57 +46,55 @@ class Calibration:
       self.points.append(pose)
       # Calibrate after getting 3 points.
       if len(self.points) == 3:
-        self.btn.state_changed.disconnect(self.__get_point)
         self.__calibrate(self.points)
+
+  def __get_vertical(self, origin):
+    motion.neutral(self.move_group)
+
+    oldz = origin.z
+    origin.z += 0.005
+    ch = 0
+    while ch != 'd':
+      ch = baxter_external_devices.getch()
+      if ch == 'w':
+        origin.z += 0.005
+      elif ch == 's':
+        origin.z -= 0.005
+      if oldz != origin.z:
+        print origin.z
+        oldz = origin.z
+        motion.position(self.move_group, origin)
+
+    return origin
 
   def __calibrate(self, points):
     p1 = points[0].position
     p2 = points[1].position
     p3 = points[2].position
 
-    def mag(u):
-      return math.sqrt(u.x ** 2 + u.y ** 2 + u.z ** 2)
-
-    def unit(u):
-      l = mag(u)
-      return geometry_msgs.msg.Vector3(u.x / l, u.y / l, u.z / l)
-
-    def cross(u, v):
-      return geometry_msgs.msg.Vector3(
-        u.y * v.z - u.z * v.y,
-        u.z * v.x - u.x * v.z,
-        u.x * v.y - u.y * v.x
-      )
-
-    def dot(u, v):
-      return u.x * v.x + u.y * v.y + u.z * v.z
-
-    def vector(p1, p2):
-      return geometry_msgs.msg.Vector3(
-        p2.x - p1.x,
-        p2.y - p1.y,
-        p2.z - p1.z
-      ) 
 
     # Coordinate frame
-    u = unit(vector(p2, p1))  # u and v are both vectors in the drawing plane
-    v = unit(vector(p2, p3))
+    u = vmath.unit(vmath.vector(p2, p1))
+
     # The origin is halfway between p1 and p3
     origin = geometry_msgs.msg.Point(
       (p1.x + p3.x) / 2,
       (p1.y + p3.y) / 2,
       (p1.z + p3.z) / 2
     )
+
+    origin = self.__get_vertical(origin)    
+
     # z points out of the drawing plane
-    z = cross(u, v)
-    x = u
+    z = geometry_msgs.msg.Vector3(0, 0, 1)
+    x = vmath.unit(geometry_msgs.msg.Vector3(u.x, u.y, 0))
     # y is orthogonal to x and x
-    y = cross(z, x)
+    y = vmath.cross(z, x)
 
     # Bounds
-    w = vector(origin, p1)  # Vector from origin to corner
-    x_bound = dot(w, x)     # Size of w that is in the x direction
-    y_bound = dot(w, y)     # Size of w that is in the y direction
+    w = vmath.vector(origin, p1)  # Vector from origin to corner
+    x_bound = vmath.dot(w, x)     # Size of w that is in the x direction
+    y_bound = vmath.dot(w, y)     # Size of w that is in the y direction
 
     rospy.set_param("/parametric/origin", {
       "x": origin.x,
@@ -118,65 +119,38 @@ class Calibration:
     rospy.set_param("/parametric/max_x", x_bound)
     rospy.set_param("/parametric/max_y", y_bound)
 
+    self.verify()
 
-    pose_goal = geometry_msgs.msg.Pose()
-    q = quaternion_from_euler(0, math.pi, 0)
-    pose_goal.orientation.w = q[0]
-    pose_goal.orientation.x = q[1]
-    pose_goal.orientation.y = q[2]
-    pose_goal.orientation.z = q[3]
-    pose_goal.position = origin 
-
-    self.move_group.go(pose_goal, wait=True)
-    self.move_group.stop()
+    rospy.signal_shutdown("calibration complete")
 
   def verify(self):
     origin = rospy.get_param("/parametric/origin")
     x_dir = rospy.get_param("/parametric/x_direction")
+    y_dir = rospy.get_param("/parametric/y_direction")
+    max_x = rospy.get_param("/parametric/max_x")
+    max_y = rospy.get_param("/parametric/max_y")
 
-    p1 = {
-      "x": origin["x"] + x_dir["x"],
-      "y": origin["y"] + x_dir["y"],
-      "z": origin["z"] + x_dir["z"]
-    }
+    origin = geometry_msgs.msg.Vector3(origin["x"], origin["y"], origin["z"])
+    x_dir = geometry_msgs.msg.Vector3(x_dir["x"], x_dir["y"], x_dir["z"])
+    y_dir = geometry_msgs.msg.Vector3(y_dir["x"], y_dir["y"], y_dir["z"])
 
-    joint_goal = [
-      math.pi / 4,
-      -math.pi / 4,
-      0,
-      3 * math.pi / 8,
-      0,
-      3 * math.pi / 8,
-      -math.pi / 2
-    ]
-    self.move_group.go(joint_goal, wait=True)
-    self.move_group.stop()
+    print origin
+    motion.neutral(self.move_group)
+    motion.position(self.move_group, origin)
 
-    pose_goal = geometry_msgs.msg.Pose()
-    q = quaternion_from_euler(0, math.pi, 0)
-    pose_goal.orientation.w = q[0]
-    pose_goal.orientation.x = q[1]
-    pose_goal.orientation.y = q[2]
-    pose_goal.orientation.z = q[3]
-    pose_goal.position.x = origin["x"]
-    pose_goal.position.y = origin["y"] 
-    pose_goal.position.z = origin["z"] 
+    motion.neutral(self.move_group)
+    x_max = vmath.add(origin, vmath.scale(max_x, x_dir))
+    print x_max
+    motion.position(self.move_group, x_max)
 
-    self.move_group.go(pose_goal, wait=True)
-    self.move_group.stop()
+    motion.neutral(self.move_group)
+    y_max = vmath.add(origin, vmath.scale(max_y, y_dir))
+    print y_max
+    motion.position(self.move_group, y_max)
 
-    pose_goal = geometry_msgs.msg.Pose()
-    q = quaternion_from_euler(0, math.pi, 0)
-    pose_goal.orientation.w = q[0]
-    pose_goal.orientation.x = q[1]
-    pose_goal.orientation.y = q[2]
-    pose_goal.orientation.z = q[3]
-    pose_goal.position.x = p1["x"]
-    pose_goal.position.y = p1["y"] 
-    pose_goal.position.z = p1["z"] 
-    
-    self.move_group.set_pose_target(pose_goal)
-    self.move_group.go()
+    motion.neutral(self.move_group)
+    print origin
+    motion.position(self.move_group, origin)
 
 v = Calibration()
 v.start()
